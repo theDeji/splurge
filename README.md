@@ -27,3 +27,4 @@ This project is a small buyer app demonstrating product list, product detail, ca
 - Add a global font for the app
 - Make a quick "add to car" feature from Product List Screen
 - Add a Splash screen and onboarding flow with Login/Sign Up functionalities
+- Add pagination on product screen
