@@ -1,98 +1,175 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import SimpleBottomSheet from "@/components/BottomSheet";
+import ProductCard from "@/components/ProductCard";
+import { PRODUCTS } from "@/data/products";
+import { usePersistCart } from "@/hooks/usePersistCart";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import {
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useDispatch } from "react-redux";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  usePersistCart();
+  const dispatch = useDispatch();
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // sortedProducts is used as the data source for the FlatList
+  const sortedProducts = useMemo(() => {
+    if (sortOrder === "asc") {
+      return [...PRODUCTS].sort((a, b) => a.price - b.price);
+    } else if (sortOrder === "desc") {
+      return [...PRODUCTS].sort((a, b) => b.price - a.price);
+    }
+    return PRODUCTS;
+  }, [sortOrder]);
+
+  const sortLabel =
+    sortOrder === "asc"
+      ? "Price: Lowest → Highest"
+      : sortOrder === "desc"
+      ? "Price: Highest → Lowest"
+      : "Sort: None";
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Splurge 💸</Text>
+        <TouchableOpacity
+          onPress={() => setSheetVisible(true)}
+          accessibilityLabel="filter-button"
+        >
+          <FontAwesome6 name="filter" size={24} color="gray" />
+        </TouchableOpacity>
+      </View>
+
+      {/* show current sort label */}
+      <View style={styles.sortRow}>
+        <Text style={styles.sortText}>{sortLabel}</Text>
+        {sortOrder && (
+          <TouchableOpacity
+            onPress={() => setSortOrder(null)}
+            style={styles.clearBtn}
+            accessibilityLabel="clear-sort"
+          >
+            <Text style={styles.clearText}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <FlatList
+        data={sortedProducts} // <- use sortedProducts here
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <ProductCard product={item} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
+
+      <SimpleBottomSheet
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+        snapHeight={260}
+      >
+        <Text style={sheetStyles.title}>Sort by Price</Text>
+
+        <TouchableOpacity
+          style={sheetStyles.option}
+          onPress={() => {
+            setSortOrder("asc");
+            setSheetVisible(false);
+          }}
+        >
+          <Text>Lowest to Highest</Text>
+          <FontAwesome6 name="arrow-up-wide-short" size={24} color="gray" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={sheetStyles.option}
+          onPress={() => {
+            setSortOrder("desc");
+            setSheetVisible(false);
+          }}
+        >
+          <Text>Highest to Lowest</Text>
+          <FontAwesome6 name="arrow-down-wide-short" size={24} color="gray" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[sheetStyles.option, { borderBottomWidth: 0 }]}
+          onPress={() => {
+            setSortOrder(null);
+            setSheetVisible(false);
+          }}
+        >
+          <Text>Clear</Text>
+        </TouchableOpacity>
+      </SimpleBottomSheet>
+    </SafeAreaView>
   );
 }
 
+const sheetStyles = StyleSheet.create({
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+  },
+});
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, backgroundColor: "#fff" },
+  header: {
+    height: 72,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderColor: "#eee",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: { fontSize: 22, fontWeight: "700" },
+  cartBtn: { color: "#007EFF", fontSize: 16 },
+
+  // sort label row
+  sortRow: {
+    height: 44,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderColor: "#fafafa",
+    backgroundColor: "#fff",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  sortText: {
+    color: "#666",
+    fontSize: 14,
+  },
+  clearBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: "#f2f2f2",
+  },
+  clearText: {
+    fontSize: 13,
+    color: "#333",
   },
 });
